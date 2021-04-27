@@ -1,17 +1,30 @@
-import sys, re, time
-from socket import *
+import socket, sys, re, os
+import workerThread
+sys.path.append("../lib")
+import params
+import threading
 
-sSocket = socket(AF_INET, SOCK_STREAM)
-sSocket.bind(('127.0.0.1',50000))
-sSocket.listen(100)
+switchesVarDefaults = (
+        (('-l', '--listenPort') ,'listenPort', 50001),
+        (('-?', '--usage'), "usage", False), 
+        )
 
-cSocket, addr = sSocket.accept()
-time.sleep(10)
-print('Connecting to {}'.format(addr))
-msg = cSocket.recv(1024)
+progname = "fileTransferServer"
+paramMap = params.parseParams(switchesVarDefaults)
 
-print('Message: ', msg.decode())
+listenPort = paramMap['listenPort']
+listenAddr = ''                                        
 
-remoteFile = open('inServer.txt','w+')
-remoteFile.write(msg.decode());
-remoteFile.close()
+if paramMap['usage']:
+        params.usage()
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((listenAddr, listenPort))
+s.listen(1)
+os.chdir("./receivedFiles")
+
+while True:
+    conn, addr = s.accept()                             # wait for incoming connection request
+    print('Connected by', addr)
+    work = workerThread.Worker(conn,addr)
+    work.start()
