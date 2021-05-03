@@ -28,7 +28,3 @@ def myReadLine():
     index = 0
     limit = 0
     return line
-
-def parseTCPInput(string):
-    chunks = string.split()
-    return chunks[0], chunks[1], chunks[2]         # returns command, localfile, remotefile

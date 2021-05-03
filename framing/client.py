@@ -1,5 +1,7 @@
 import socket, sys, re, time, os
 import framedSocket
+import workerThread
+from myIO import myReadLine
 sys.path.append("../lib")
 import params
 
@@ -9,7 +11,7 @@ switchesVarDefaults = (
         (('-?', '--usage'), "usage", False), # boolean (set if present)
         )
 
-progname = "framedClient"
+progname = "echoclient"
 paramMap = params.parseParams(switchesVarDefaults)
 server, usage  = paramMap["server"], paramMap["usage"]
 
@@ -47,32 +49,30 @@ if s is None:
     print('could not open socket')
     sys.exit(1)
 
+delay = float(paramMap['delay'])
+if delay:
+    print(f'sleeping for {delay}s')
+    time.sleep(delay)
+    print('done sleeping')
+    
 framedSock = framedSocket.Framed_Socket(s)
 
-while True:
-    print("Enter File to send or QUIT to exit:")
-    fileName = (os.read(0, 1024).decode()).strip()
-    if fileName != 'QUIT' or fileName != None:    
-        filePath = ("files/" + fileName)
-        if os.path.exists(filePath):
-            print("Sending %s" % fileName)
-            framedSock.tx(fileName.encode())
-            serverReply = framedSock.rx()
-            if serverReply == "OK":
-                found = open(filePath, "r")
-                data = found.read()
-                if not data:
-                    print("empty file")
-                    continue
-                framedSock.tx(data.encode())
-            elif serverReply == "wait":
-                print("Server is busy")
-            else:
-                print("File previously transferred")
-        else:
-            print("file not found")
-            continue
-    else:
-        print("I quit...")
-        s.close()
-        sys.exit(0)
+fileName = os.read(0,1024).decode().strip()
+print(f'Sending {fileName}...')
+framedSock.tx(fileName.encode())
+if fileName == 'QUIT':
+    print("Quitting...")
+    sys.exit(1)
+serverReply = framedSock.rx()
+
+print(f"Server response:{serverReply}\n ")
+
+
+if serverReply == "OK":
+    fd = open(('./files/'+fileName),'r')       #open file to be sent
+    content = fd.read()
+    fd.close()
+    framedSock.tx(content.encode())
+else:
+    os.write(2,("Error").encode())           #if the file already exists then print error
+    sys.exit(1)
